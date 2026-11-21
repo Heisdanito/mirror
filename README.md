@@ -5,10 +5,10 @@ Built by Daniel under HeisDev.
 
 ## Features (v1)
 - **Onboarding** – short intro, privacy note, name, goals, and accent colour.
-- **Daily entry** – a 1–5 mood (Heavy, Low, Okay, Good, Bright), feeling and activity tags, optional writing prompts.
+- **Daily entry** – a 1–5 mood (Heavy, Low, Okay, Good, Bright), feeling and activity tags, optional writing prompts, and up to 4 photos (camera or gallery).
 - **Journal** – entries grouped by month, with search and mood filters.
 - **Insights** – week / month / 3-month mood chart, average mood, mood distribution, and what your good and hard days have in common.
-- **Look back** – a random older entry on the home screen.
+- **Look back** – a random older entry on the home screen, with its photo.
 - **You** – light, dark or auto theme, five accent colours, goals, and a delete-all option.
 
 Everything is stored on the device with SQLite. No account, cloud, or ads.
@@ -43,7 +43,7 @@ private/            git-ignored, for local secrets and data
 ```
 
 ## Database
-`entries(id, date UNIQUE, mood 1–5, text, created_at, feelings JSON, activities JSON, prompt)`
+`entries(id, date UNIQUE, mood 1–5, text, created_at, feelings JSON, activities JSON, prompt, images JSON)`. Photos are copied into the app's private `photos/` folder and stored by file name.
 `settings(key, value)`, which stores onboarding, name, theme, accent, and goals.
 
 ## Roadmap (v2)

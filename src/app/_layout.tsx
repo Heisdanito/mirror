@@ -2,8 +2,14 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SQLiteProvider } from 'expo-sqlite';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { DB_NAME, migrateDb } from '@/lib/db';
+import type { SQLiteDatabase } from 'expo-sqlite';
+import { DB_NAME, migrateDb, sweepOrphanPhotos } from '@/lib/db';
 import { SettingsProvider, usePalette } from '@/lib/settings';
+
+async function initDb(db: SQLiteDatabase) {
+  await migrateDb(db);
+  await sweepOrphanPhotos(db).catch(() => {});
+}
 
 function ThemedStack() {
   const p = usePalette();
@@ -29,7 +35,7 @@ function ThemedStack() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <SQLiteProvider databaseName={DB_NAME} onInit={migrateDb}>
+      <SQLiteProvider databaseName={DB_NAME} onInit={initDb}>
         <SettingsProvider>
           <ThemedStack />
         </SettingsProvider>

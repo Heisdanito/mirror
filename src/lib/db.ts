@@ -1,8 +1,9 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { addDays, toDay } from './date';
+import { deleteAllPhotos, deleteOrphans, deletePhotos } from './photos';
 
 export const DB_NAME = 'mirror.db';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 export type Entry = {
   id: number;
@@ -13,9 +14,10 @@ export type Entry = {
   feelings: string[];
   activities: string[];
   prompt: string | null;
+  images: string[]; // file names in the private photos folder
 };
 
-type EntryRow = Omit<Entry, 'feelings' | 'activities'> & { feelings: string; activities: string };
+type EntryRow = Omit<Entry, 'feelings' | 'activities' | 'images'> & { feelings: string; activities: string; images: string };
 
 export async function migrateDb(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -42,6 +44,10 @@ export async function migrateDb(db: SQLiteDatabase) {
       );
     `);
   }
+  if (version < 2) {
+    // v2: photo attachments (JSON array of file names inside the app's photos folder)
+    await db.execAsync(`ALTER TABLE entries ADD COLUMN images TEXT NOT NULL DEFAULT '[]';`);
+  }
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
 
@@ -58,20 +64,21 @@ const fromRow = (r: EntryRow): Entry => ({
   ...r,
   feelings: parseList(r.feelings),
   activities: parseList(r.activities),
+  images: parseList(r.images),
 });
 
-export type EntryInput = Pick<Entry, 'date' | 'mood' | 'text' | 'feelings' | 'activities' | 'prompt'>;
+export type EntryInput = Pick<Entry, 'date' | 'mood' | 'text' | 'feelings' | 'activities' | 'prompt' | 'images'>;
 
 /** One entry per day: saving again on the same day updates it. */
 export async function saveEntry(db: SQLiteDatabase, e: EntryInput): Promise<number> {
   await db.runAsync(
-    `INSERT INTO entries (date, mood, text, created_at, feelings, activities, prompt)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO entries (date, mood, text, created_at, feelings, activities, prompt, images)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(date) DO UPDATE SET
        mood = excluded.mood, text = excluded.text, feelings = excluded.feelings,
-       activities = excluded.activities, prompt = excluded.prompt`,
+       activities = excluded.activities, prompt = excluded.prompt, images = excluded.images`,
     e.date, e.mood, e.text.trim(), new Date().toISOString(),
-    JSON.stringify(e.feelings), JSON.stringify(e.activities), e.prompt,
+    JSON.stringify(e.feelings), JSON.stringify(e.activities), e.prompt, JSON.stringify(e.images),
   );
   const row = await db.getFirstAsync<{ id: number }>('SELECT id FROM entries WHERE date = ?', e.date);
   return row?.id ?? 0;
@@ -122,7 +129,9 @@ export async function randomLookBack(db: SQLiteDatabase, excludeId?: number) {
 }
 
 export async function deleteEntry(db: SQLiteDatabase, id: number) {
+  const e = await getEntry(db, id);
   await db.runAsync('DELETE FROM entries WHERE id = ?', id);
+  if (e) deletePhotos(e.images);
 }
 
 export async function countEntries(db: SQLiteDatabase) {
@@ -144,8 +153,15 @@ export async function currentStreak(db: SQLiteDatabase) {
   return streak;
 }
 
+/** Runs once at startup, before any screen can add new photos. */
+export async function sweepOrphanPhotos(db: SQLiteDatabase) {
+  const rows = await db.getAllAsync<{ images: string }>("SELECT images FROM entries WHERE images != '[]'");
+  deleteOrphans(new Set(rows.flatMap((r) => parseList(r.images))));
+}
+
 export async function wipeAll(db: SQLiteDatabase) {
   await db.execAsync('DELETE FROM entries; DELETE FROM settings;');
+  deleteAllPhotos();
 }
 
 // ---- settings (key/value) ----

@@ -5,6 +5,8 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { MoodPicker } from '@/components/MoodPicker';
+import { PhotoPicker } from '@/components/Photos';
+import { deletePhotos } from '@/lib/photos';
 import { Button, Card, ChipGroup, Label, Screen, tap, toggleIn } from '@/components/ui';
 import { ACTIVITIES, FEELINGS, PROMPTS, type MoodValue } from '@/lib/constants';
 import { formatLong, toDay } from '@/lib/date';
@@ -24,6 +26,8 @@ export default function Write() {
   const [text, setText] = useState('');
   const [feelings, setFeelings] = useState<string[]>([]);
   const [activities, setActivities] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>([]);
+  const [savedImages, setSavedImages] = useState<string[]>([]);
   const [promptIdx, setPromptIdx] = useState(() => Math.floor(Math.random() * PROMPTS.length));
   const [usePrompt, setUsePrompt] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -38,6 +42,8 @@ export default function Write() {
       setText(e.text);
       setFeelings(e.feelings);
       setActivities(e.activities);
+      setImages(e.images);
+      setSavedImages(e.images);
       const i = e.prompt ? PROMPTS.indexOf(e.prompt) : -1;
       if (i >= 0) {
         setPromptIdx(i);
@@ -56,14 +62,22 @@ export default function Write() {
     if (!dirty) return router.back();
     Alert.alert('Discard this entry?', 'What you wrote will not be saved.', [
       { text: 'Keep writing', style: 'cancel' },
-      { text: 'Discard', style: 'destructive', onPress: () => router.back() },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: () => {
+          deletePhotos(images.filter((n) => !savedImages.includes(n))); // photos added this session
+          router.back();
+        },
+      },
     ]);
   };
 
   const save = async () => {
     if (!mood || saving) return;
     setSaving(true);
-    await saveEntry(db, { date, mood, text: text.slice(0, MAX), feelings, activities, prompt: usePrompt ? prompt : null });
+    await saveEntry(db, { date, mood, text: text.slice(0, MAX), feelings, activities, prompt: usePrompt ? prompt : null, images });
+    deletePhotos(savedImages.filter((n) => !images.includes(n))); // photos removed while editing
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     router.back();
   };
@@ -121,6 +135,9 @@ export default function Write() {
         <Text style={{ color: p.faint, fontSize: 12, textAlign: 'right', marginTop: 6 }}>
           {text.length}/{MAX}
         </Text>
+
+        <Label style={styles.section}>Photos</Label>
+        <PhotoPicker value={images} onChange={mark(setImages)} />
 
         <Button
           title={mood ? (editing ? 'Save changes' : 'Save entry') : 'Pick a mood to save'}

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { photoUri } from '@/lib/photos';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -119,6 +120,9 @@ export default function Today() {
         </View>
         {lookBack ? (
           <Pressable onPress={() => router.push(`/entry/${lookBack.id}`)} style={{ gap: 8 }}>
+            {lookBack.images.length > 0 && (
+              <Image source={{ uri: photoUri(lookBack.images[0]) }} style={styles.lookImg} accessibilityLabel="Photo from that day" />
+            )}
             <Text style={[styles.quote, { color: p.ink }]} numberOfLines={4}>
               {lookBack.text ? `“${lookBack.text}”` : `You felt ${moodInfo(lookBack.mood).label.toLowerCase()} that day.`}
             </Text>
@@ -147,4 +151,5 @@ const styles = StyleSheet.create({
   stat: { flex: 1, gap: 2 },
   statNum: { fontFamily: fonts.serif, fontSize: 32 },
   quote: { fontFamily: fonts.serif, fontSize: 18, lineHeight: 26 },
+  lookImg: { width: '100%', aspectRatio: 16 / 9, borderRadius: 14 },
 });

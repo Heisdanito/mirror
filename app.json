@@ -27,7 +27,15 @@
       "expo-sqlite",
       "expo-router",
       "expo-status-bar",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Mirror lets you attach photos from your library to journal entries. Photos stay on this phone.",
+          "cameraPermission": "Mirror lets you take a photo to attach to a journal entry. Photos stay on this phone.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "scheme": "mirror"
   }

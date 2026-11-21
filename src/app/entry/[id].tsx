@@ -4,6 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { MoodDot } from '@/components/MoodPicker';
+import { PhotoGallery } from '@/components/Photos';
 import { Body, Card, Label, Screen } from '@/components/ui';
 import { moodInfo } from '@/lib/constants';
 import { formatLong, relativeAgo } from '@/lib/date';
@@ -79,6 +80,8 @@ export default function EntryView() {
           )}
 
           <Text style={[styles.text, { color: entry.text ? p.ink : p.faint }]}>{entry.text || 'No words, just a feeling.'}</Text>
+
+          <PhotoGallery names={entry.images} />
 
           {entry.feelings.length > 0 && <TagRow title="Felt" items={entry.feelings} />}
           {entry.activities.length > 0 && <TagRow title="Did" items={entry.activities} />}
